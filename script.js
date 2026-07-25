@@ -1,6 +1,3 @@
-// ---------------------------------------------------------------------------
-// Telegram WebApp init — con manejo de errores
-// ---------------------------------------------------------------------------
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 const isFallbackMode = window.telegramFallback || !tg;
 
@@ -8,10 +5,10 @@ if (tg && !isFallbackMode) {
   try {
     tg.ready();
     tg.expand && tg.expand();
-    tg.setHeaderColor && tg.setHeaderColor("#0d0a16");
-    tg.setBackgroundColor && tg.setBackgroundColor("#0d0a16");
+    tg.setHeaderColor && tg.setHeaderColor("#0a0a0a");
+    tg.setBackgroundColor && tg.setBackgroundColor("#0a0a0a");
   } catch (e) {
-    console.error("Telegram WebApp init error:", e);
+    console.error("Error de inicialización de Telegram WebApp:", e);
   }
 }
 
@@ -29,24 +26,47 @@ function openLink(url) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-// ---------------------------------------------------------------------------
-// TMDB API config
-// ---------------------------------------------------------------------------
-// Consigue tu propia clave gratuita en https://www.themoviedb.org/settings/api
-// y sustituye el valor de abajo antes de publicar la Mini App.
 const TMDB_KEY = "0851eb8df09343f4fcba140a6855957a";
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMG_BASE = "https://image.tmdb.org/t/p/w500";
+const IMG_ORIGINAL = "https://image.tmdb.org/t/p/original";
 const REGION = "ES";
 const LANGUAGE = "es-ES";
 
-async function fetchJSON(url, timeout = 8000) {
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos: suficiente para navegar entre pestañas sin pedir de más
+
+function cacheGet(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const { t, data } = JSON.parse(raw);
+    if (Date.now() - t > CACHE_TTL_MS) {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  } catch (e) { return null; }
+}
+
+function cacheSet(key, data) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data }));
+  } catch (e) { /* sessionStorage lleno o no disponible: seguimos sin caché */ }
+}
+
+async function fetchJSON(url, timeout = 10000) {
+  const cacheKey = `tmdb:${url}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) throw new Error(`${url} → ${res.status}`);
-    return await res.json();
+    const data = await res.json();
+    cacheSet(cacheKey, data);
+    return data;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -61,9 +81,6 @@ function tmdbUrl(path, params = {}) {
   return `${TMDB_BASE}${path}?${usp.toString()}`;
 }
 
-// ---------------------------------------------------------------------------
-// Genre maps (fetched once)
-// ---------------------------------------------------------------------------
 const GENRE_MAP = {};
 
 async function loadGenreMaps() {
@@ -76,7 +93,7 @@ async function loadGenreMaps() {
       GENRE_MAP[g.id] = g.name;
     });
   } catch (e) {
-    console.warn("loadGenreMaps failed:", e);
+    console.warn("loadGenreMaps falló:", e);
   }
 }
 
@@ -84,9 +101,6 @@ function genreNames(ids) {
   return (ids || []).map(id => GENRE_MAP[id]).filter(Boolean);
 }
 
-// ---------------------------------------------------------------------------
-// Mappers
-// ---------------------------------------------------------------------------
 function mapItem(item, forcedType) {
   const mediaType = forcedType || item.media_type || (item.first_air_date ? "tv" : "movie");
   const title = item.title || item.name || "Sin título";
@@ -96,6 +110,7 @@ function mapItem(item, forcedType) {
     mediaType,
     title,
     image: item.poster_path ? `${IMG_BASE}${item.poster_path}` : "",
+    backdrop: item.backdrop_path ? `${IMG_ORIGINAL}${item.backdrop_path}` : "",
     genres: genreNames(item.genre_ids),
     rating: item.vote_average || 0,
     released: dateStr ? dateStr.slice(0, 4) : "",
@@ -103,22 +118,19 @@ function mapItem(item, forcedType) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// API layer
-// ---------------------------------------------------------------------------
 const API = {
   async nowPlaying(page = 1) {
     try {
       const data = await fetchJSON(tmdbUrl("/movie/now_playing", { region: REGION, page }));
       return (data.results || []).map(it => mapItem(it, "movie"));
-    } catch (e) { console.error("nowPlaying failed:", e); return []; }
+    } catch (e) { console.error("nowPlaying falló:", e); return []; }
   },
 
   async popularSeries(page = 1) {
     try {
       const data = await fetchJSON(tmdbUrl("/tv/popular", { page }));
       return (data.results || []).map(it => mapItem(it, "tv"));
-    } catch (e) { console.error("popularSeries failed:", e); return []; }
+    } catch (e) { console.error("popularSeries falló:", e); return []; }
   },
 
   async trending(page = 1) {
@@ -127,7 +139,7 @@ const API = {
       return (data.results || [])
         .filter(it => it.media_type === "movie" || it.media_type === "tv")
         .map(it => mapItem(it));
-    } catch (e) { console.error("trending failed:", e); return []; }
+    } catch (e) { console.error("trending falló:", e); return []; }
   },
 
   async discoverMovies(genreId, page = 1) {
@@ -136,7 +148,7 @@ const API = {
     try {
       const data = await fetchJSON(tmdbUrl("/discover/movie", params));
       return (data.results || []).map(it => mapItem(it, "movie"));
-    } catch (e) { console.error("discoverMovies failed:", e); return []; }
+    } catch (e) { console.error("discoverMovies falló:", e); return []; }
   },
 
   async search(query, page = 1) {
@@ -146,7 +158,7 @@ const API = {
       return (data.results || [])
         .filter(it => it.media_type === "movie" || it.media_type === "tv")
         .map(it => mapItem(it));
-    } catch (e) { console.error("search failed:", e); return []; }
+    } catch (e) { console.error("search falló:", e); return []; }
   },
 
   async detail(id, mediaType) {
@@ -161,48 +173,71 @@ const API = {
       this.trending(),
     ]);
     return {
-      estrenos: estrenos.status === "fulfilled" ? estrenos.value.slice(0, 6) : [],
-      series: series.status === "fulfilled" ? series.value.slice(0, 6) : [],
-      tendencias: tendencias.status === "fulfilled" ? tendencias.value.slice(0, 6) : [],
+      estrenos: estrenos.status === "fulfilled" ? estrenos.value.slice(0, 12) : [],
+      series: series.status === "fulfilled" ? series.value.slice(0, 12) : [],
+      tendencias: tendencias.status === "fulfilled" ? tendencias.value.slice(0, 12) : [],
     };
   },
 };
 
-// ---------------------------------------------------------------------------
-// Rendering
-// ---------------------------------------------------------------------------
 const TAG_LABEL = { movie: "Película", tv: "Serie" };
-const TAG_CLASS = { movie: "tag-deal", tv: "tag-free" };
-const PLACEHOLDER_GRADIENT = "linear-gradient(135deg, rgba(242,193,78,0.18), rgba(180,108,255,0.14))";
+const TAG_ICON = { movie: "film", tv: "tv" };
 
-function ratingLine(item) {
-  if (item.rating) return `★ ${item.rating.toFixed(1)}`;
-  return item.released || "";
+function getRatingClass(rating) {
+  if (rating >= 7) return "";
+  if (rating >= 5) return "mid";
+  return "bad";
 }
 
 function cardHTML(item) {
   const cover = item.image
     ? `<img src="${item.image}" alt="" loading="lazy" />`
-    : `<div class="cover-fallback" style="background:${PLACEHOLDER_GRADIENT}">🎬</div>`;
-  const tagLabel = TAG_LABEL[item.mediaType];
-  const meta = item.genres && item.genres.length
-    ? item.genres.slice(0, 2).join(" · ")
-    : item.released || "";
-  const itemData = JSON.stringify(item).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface-2);"><i data-lucide="film" style="width:48px;height:48px;opacity:0.3;"></i></div>`;
+  
+  const rating = item.rating ? item.rating.toFixed(1) : "N/A";
+  const meta = item.genres && item.genres.length ? item.genres.slice(0, 2).join(" • ") : item.released;
+  
   return `
     <div class="card" data-id="${item.id}" data-tag="${item.mediaType}">
       <div class="card-cover">
         ${cover}
-        ${tagLabel ? `<span class="card-tag ${TAG_CLASS[item.mediaType]}">${tagLabel}</span>` : ""}
+        <div class="rating-badge ${getRatingClass(item.rating)}">
+          <i data-lucide="star" style="fill:currentColor;"></i>
+          ${rating}
+        </div>
+        <span class="card-type">
+          <i data-lucide="${TAG_ICON[item.mediaType]}"></i>
+          ${TAG_LABEL[item.mediaType]}
+        </span>
       </div>
       <div class="card-body">
         <p class="card-title">${item.title}</p>
         <p class="card-meta">${meta || "&nbsp;"}</p>
-        <p class="card-price">${ratingLine(item)}</p>
-        <button class="btn btn-primary" data-item='${itemData}'>Ver detalles</button>
       </div>
     </div>
   `;
+}
+
+function renderCarousel(elId, items) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!items || items.length === 0) {
+    el.innerHTML = `<div class="empty-state"><i data-lucide="frown"></i><span>No se encontró nada</span></div>`;
+    lucide.createIcons();
+    return;
+  }
+  el.innerHTML = items.map(cardHTML).join("");
+  lucide.createIcons();
+  
+  el.querySelectorAll(".card").forEach(card => {
+    card.addEventListener("click", () => {
+      try {
+        const fullItem = items.find(i => i.id == card.dataset.id);
+        haptic("medium");
+        openDetailSheet(fullItem);
+      } catch (e) { console.error("Error al analizar item:", e); }
+    });
+  });
 }
 
 function renderGrid(elId, items, append = false) {
@@ -218,48 +253,38 @@ function renderGrid(elId, items, append = false) {
     seenKeys.add(key);
     return true;
   });
+  
   if (!append && uniqueItems.length === 0) {
-    el.innerHTML = `<div class="empty-state">No hay nada por aquí ahora mismo — vuelve a mirar más tarde.</div>`;
+    el.innerHTML = `<div class="empty-state"><i data-lucide="frown"></i><span>No se encontró nada</span></div>`;
+    lucide.createIcons();
     return;
   }
+  
   const html = uniqueItems.map(cardHTML).join("");
   if (append) {
     el.insertAdjacentHTML("beforeend", html);
   } else {
     el.innerHTML = html;
   }
+  lucide.createIcons();
+
+  el.querySelectorAll(".card").forEach(card => {
+    card.addEventListener("click", () => {
+      const fullItem = uniqueItems.find(i => i.id == card.dataset.id);
+      haptic("medium");
+      openDetailSheet(fullItem);
+    });
+  });
 }
 
 function renderSkeleton(elId, count = 6) {
   const el = document.getElementById(elId);
   if (!el) return;
   el.innerHTML = Array.from({ length: count })
-    .map(() => `<div class="card skeleton"><div class="card-cover"></div><div class="card-body"><div class="sk-line w70"></div><div class="sk-line w40"></div></div></div>`)
+    .map(() => `<div class="card skeleton"><div class="card-cover"></div><div class="card-body"></div></div>`)
     .join("");
 }
 
-function decodeEntities(str) {
-  return (str || "")
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
-}
-
-function truncateAtBoundary(text, maxLen) {
-  if (!text || text.length <= maxLen) return text;
-  const slice = text.slice(0, maxLen);
-  const lastStop = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf("! "), slice.lastIndexOf("? "));
-  if (lastStop > maxLen * 0.4) return slice.slice(0, lastStop + 1).trim();
-  const lastSpace = slice.lastIndexOf(" ");
-  return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice).trim() + "…";
-}
-
-// ---------------------------------------------------------------------------
-// Detail sheet — incluye "Dónde ver" con datos de JustWatch vía TMDB
-// ---------------------------------------------------------------------------
 async function openDetailSheet(item) {
   const backdrop = document.getElementById("sheetBackdrop");
   const cover = document.getElementById("sheetCover");
@@ -267,39 +292,53 @@ async function openDetailSheet(item) {
   const meta = document.getElementById("sheetMeta");
   const ratings = document.getElementById("sheetRatings");
   const desc = document.getElementById("sheetDesc");
-  const whereLabel = document.getElementById("sheetWhereLabel");
   const stores = document.getElementById("sheetStores");
 
   backdrop.classList.add("open");
   title.textContent = item.title;
-  meta.textContent = (item.genres && item.genres.length) ? item.genres.slice(0, 2).join(" · ") : (item.released || "");
+  meta.innerHTML = `
+    <span class="sheet-meta-item">
+      <i data-lucide="calendar"></i>
+      ${item.released}
+    </span>
+    <span class="sheet-meta-item">
+      <i data-lucide="clapperboard"></i>
+      ${(item.genres && item.genres.length) ? item.genres.slice(0, 3).join(" • ") : ""}
+    </span>
+  `;
   desc.textContent = "Cargando...";
   ratings.innerHTML = "";
-  whereLabel.style.display = "none";
   stores.innerHTML = "";
 
   if (item.image) {
-    cover.innerHTML = `<img src="${item.image}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius-md);" />`;
+    cover.innerHTML = `<img src="${item.image}" alt="" />`;
   } else {
-    cover.innerHTML = `<div style="background:${PLACEHOLDER_GRADIENT};width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;">🎬</div>`;
+    cover.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface-2);"><i data-lucide="film" style="width:64px;height:64px;opacity:0.3;"></i></div>`;
   }
 
   try {
     const detail = await API.detail(item.id, item.mediaType);
-    const overview = decodeEntities(detail.overview || item.overview || "");
-    desc.textContent = truncateAtBoundary(overview, 500) || "Sinopsis no disponible.";
+    desc.textContent = detail.overview || item.overview || "Descripción no disponible.";
 
     let ratingsHTML = "";
-    if (detail.vote_average) ratingsHTML += `<span class="rating-badge metacritic">★ ${detail.vote_average.toFixed(1)}</span>`;
-    const releaseDate = detail.release_date || detail.first_air_date;
-    if (releaseDate) ratingsHTML += `<span class="rating-badge">Estreno: ${releaseDate.slice(0, 4)}</span>`;
-    if (detail.runtime) ratingsHTML += `<span class="rating-badge">${detail.runtime} min</span>`;
-    if (detail.number_of_seasons) ratingsHTML += `<span class="rating-badge">${detail.number_of_seasons} temporada${detail.number_of_seasons > 1 ? "s" : ""}</span>`;
+    if (detail.vote_average) {
+      ratingsHTML += `<span class="rating-pill" style="color: var(--rating-good); border-color: var(--rating-good);">
+        <i data-lucide="star" style="fill:currentColor;"></i>
+        ${detail.vote_average.toFixed(1)}
+      </span>`;
+    }
+    if (detail.runtime) ratingsHTML += `<span class="rating-pill">
+      <i data-lucide="clock"></i>
+      ${detail.runtime} min
+    </span>`;
+    if (detail.number_of_seasons) ratingsHTML += `<span class="rating-pill">
+      <i data-lucide="layers"></i>
+      ${detail.number_of_seasons} temporada(s)
+    </span>`;
     ratings.innerHTML = ratingsHTML;
 
-    const providersES = detail["watch/providers"] && detail["watch/providers"].results && detail["watch/providers"].results[REGION];
-    if (providersES) {
-      whereLabel.style.display = "";
+    const providers = detail["watch/providers"]?.results?.[REGION];
+    if (providers) {
       const groups = [
         { key: "flatrate", label: "Suscripción" },
         { key: "rent", label: "Alquiler" },
@@ -307,33 +346,34 @@ async function openDetailSheet(item) {
       ];
       const seen = new Set();
       let chipsHTML = "";
+      
       groups.forEach(g => {
-        (providersES[g.key] || []).forEach(p => {
+        (providers[g.key] || []).forEach(p => {
           if (seen.has(p.provider_name)) return;
           seen.add(p.provider_name);
           const logo = p.logo_path ? `${IMG_BASE}${p.logo_path}` : "";
-          chipsHTML += `<span class="rating-badge">${logo ? `<img src="${logo}" alt="" style="width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;" />` : ""}${p.provider_name}</span>`;
+          chipsHTML += `<span class="rating-pill">${logo ? `<img src="${logo}" alt="" style="width:18px;height:18px;border-radius:4px;vertical-align:-4px;margin-right:6px;" />` : ""}${p.provider_name}</span>`;
         });
       });
+      
       if (chipsHTML) {
-        stores.innerHTML = `<div class="sheet-ratings" style="margin-bottom:10px;">${chipsHTML}</div>` +
-          (providersES.link ? `<button class="btn btn-primary store-btn" data-url="${providersES.link}">🔎 Ver todas las opciones (JustWatch)</button>` : "");
-      } else if (providersES.link) {
-        stores.innerHTML = `<p class="sheet-meta">No disponible en streaming/alquiler en España por ahora.</p>` +
-          `<button class="btn btn-outline store-btn" data-url="${providersES.link}">🔎 Comprobar en JustWatch</button>`;
+        stores.innerHTML = `<div class="sheet-ratings">${chipsHTML}</div>` +
+          (providers.link ? `<button class="btn btn-primary store-btn" data-url="${providers.link}">
+            <i data-lucide="external-link"></i>
+            Abrir en JustWatch
+          </button>` : "");
       } else {
-        stores.innerHTML = `<p class="sheet-meta">Sin información de disponibilidad en España.</p>`;
+        stores.innerHTML = `<p style="color: var(--text-muted); font-size: 14px;">No hay datos de streaming en tu región.</p>`;
       }
     } else {
-      whereLabel.style.display = "";
-      stores.innerHTML = `<p class="sheet-meta">Sin información de disponibilidad en España.</p>`;
+      stores.innerHTML = `<p style="color: var(--text-muted); font-size: 14px;">No hay datos de streaming en tu región.</p>`;
     }
   } catch (e) {
-    console.warn("openDetailSheet failed:", e);
-    desc.textContent = decodeEntities(item.overview) || "Sinopsis no disponible.";
-    stores.innerHTML = `<p class="sheet-meta">No se pudo cargar la información de disponibilidad.</p>`;
+    console.warn("openDetailSheet falló:", e);
+    desc.textContent = item.overview || "Descripción no disponible.";
   }
 
+  lucide.createIcons();
   attachSheetClose();
 }
 
@@ -344,33 +384,64 @@ function attachSheetClose() {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Section loaders
-// ---------------------------------------------------------------------------
 const loaded = new Set();
 
 async function loadHome(force = false) {
   if (loaded.has("home") && !force) return;
-  renderSkeleton("grid-home", 6);
-  renderSkeleton("grid-series-home", 6);
-  renderSkeleton("grid-tendencias-home", 6);
+  renderSkeleton("carousel-tendencias-home", 6);
+  renderSkeleton("carousel-estrenos-home", 6);
+  renderSkeleton("carousel-series-home", 6);
+  
   const data = await API.home();
-  renderGrid("grid-home", data.estrenos);
-  renderGrid("grid-series-home", data.series);
-  renderGrid("grid-tendencias-home", data.tendencias);
+  
+  if (data.tendencias.length > 0) {
+    const heroItem = data.tendencias[0];
+    const heroBanner = document.getElementById("heroBanner");
+    if (heroItem.backdrop) {
+      heroBanner.style.backgroundImage = `url(${heroItem.backdrop})`;
+    }
+    document.getElementById("heroTitle").textContent = heroItem.title;
+    document.getElementById("heroMeta").innerHTML = `
+      <span class="hero-meta-item hero-rating">
+        <i data-lucide="star" style="fill:currentColor;"></i>
+        ${heroItem.rating.toFixed(1)}
+      </span>
+      <span class="hero-meta-item">
+        <i data-lucide="calendar"></i>
+        ${heroItem.released}
+      </span>
+      <span class="hero-meta-item">
+        <i data-lucide="clapperboard"></i>
+        ${heroItem.genres.slice(0, 2).join(" • ")}
+      </span>
+    `;
+    
+    document.getElementById("heroWatchBtn").onclick = () => {
+      haptic("medium");
+      openDetailSheet(heroItem);
+    };
+    document.getElementById("heroInfoBtn").onclick = () => {
+      haptic("medium");
+      openDetailSheet(heroItem);
+    };
+  }
+
+  renderCarousel("carousel-tendencias-home", data.tendencias);
+  renderCarousel("carousel-estrenos-home", data.estrenos);
+  renderCarousel("carousel-series-home", data.series);
   loaded.add("home");
 }
 
 function toggleLoadMoreBtn(id, show) {
   const btn = document.getElementById(id);
-  if (btn) btn.style.display = show ? "" : "none";
+  if (btn) btn.style.display = show ? "block" : "none";
 }
 
 let estrenosPage = 1;
 async function loadEstrenos(force = false) {
   if (loaded.has("estrenos") && !force) return;
   estrenosPage = 1;
-  renderSkeleton("grid-estrenos", 6);
+  renderSkeleton("grid-estrenos", 8);
   const data = await API.nowPlaying(estrenosPage);
   renderGrid("grid-estrenos", data);
   loaded.add("estrenos");
@@ -383,7 +454,7 @@ async function loadMoreEstrenos() {
   estrenosPage += 1;
   const data = await API.nowPlaying(estrenosPage);
   renderGrid("grid-estrenos", data, true);
-  if (btn) { btn.disabled = false; btn.textContent = "Mostrar más"; }
+  if (btn) { btn.disabled = false; btn.textContent = "Cargar más"; }
   toggleLoadMoreBtn("loadMoreEstrenos", data.length > 0);
 }
 
@@ -391,7 +462,7 @@ let seriesPage = 1;
 async function loadSeries(force = false) {
   if (loaded.has("series") && !force) return;
   seriesPage = 1;
-  renderSkeleton("grid-series", 6);
+  renderSkeleton("grid-series", 8);
   const data = await API.popularSeries(seriesPage);
   renderGrid("grid-series", data);
   loaded.add("series");
@@ -404,13 +475,13 @@ async function loadMoreSeries() {
   seriesPage += 1;
   const data = await API.popularSeries(seriesPage);
   renderGrid("grid-series", data, true);
-  if (btn) { btn.disabled = false; btn.textContent = "Mostrar más"; }
+  if (btn) { btn.disabled = false; btn.textContent = "Cargar más"; }
   toggleLoadMoreBtn("loadMoreSeries", data.length > 0);
 }
 
 async function loadTendencias(force = false) {
   if (loaded.has("tendencias") && !force) return;
-  renderSkeleton("grid-tendencias", 9);
+  renderSkeleton("grid-tendencias", 10);
   const data = await API.trending(1);
   renderGrid("grid-tendencias", data);
   loaded.add("tendencias");
@@ -423,7 +494,7 @@ let buscarPage = 1;
 async function loadBuscar(force = false) {
   if (loaded.has("donde_ver") && !force && !currentQuery) return;
   buscarPage = 1;
-  renderSkeleton("grid-donde_ver", 9);
+  renderSkeleton("grid-donde_ver", 10);
   const data = currentQuery
     ? await API.search(currentQuery, buscarPage)
     : await API.discoverMovies(currentGenre, buscarPage);
@@ -440,7 +511,7 @@ async function loadMoreBuscar() {
     ? await API.search(currentQuery, buscarPage)
     : await API.discoverMovies(currentGenre, buscarPage);
   renderGrid("grid-donde_ver", data, true);
-  if (btn) { btn.disabled = false; btn.textContent = "Mostrar más"; }
+  if (btn) { btn.disabled = false; btn.textContent = "Cargar más"; }
   toggleLoadMoreBtn("loadMoreBuscar", data.length > 0);
 }
 
@@ -464,9 +535,6 @@ const SECTION_LOADERS = {
   donde_ver: loadBuscar,
 };
 
-// ---------------------------------------------------------------------------
-// Navigation
-// ---------------------------------------------------------------------------
 const tabs = document.querySelectorAll(".tab");
 const bnavItems = document.querySelectorAll(".bnav-item");
 const panels = document.querySelectorAll(".panel");
@@ -475,7 +543,7 @@ function goToSection(section) {
   panels.forEach(p => p.classList.toggle("active", p.id === `section-${section}`));
   tabs.forEach(t => t.classList.toggle("active", t.dataset.section === section));
   bnavItems.forEach(b => b.classList.toggle("active", b.dataset.section === section));
-  window.scrollTo({ top: 0 });
+  window.scrollTo({ top: 0, behavior: "smooth" });
   const loader = SECTION_LOADERS[section];
   if (loader) loader();
 }
@@ -502,17 +570,6 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
     goToSection("donde_ver");
     loadBuscar(true);
   }, 400);
-});
-
-document.querySelector(".content").addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-item]");
-  if (btn) {
-    try {
-      const item = JSON.parse(btn.dataset.item.replace(/&apos;/g, "'").replace(/&quot;/g, '"'));
-      haptic("medium");
-      openDetailSheet(item);
-    } catch (e) { console.error("Parse item error:", e); }
-  }
 });
 
 document.getElementById("sheetBackdrop").addEventListener("click", (e) => {
@@ -545,6 +602,75 @@ if (aboutBtn && aboutBackdrop) {
     if (e.target === aboutBackdrop) aboutBackdrop.classList.remove("open");
   });
 }
+
+lucide.createIcons();
+
+// --- Drag-to-scroll (ratón de escritorio) para .carousel, igual que el swipe en móvil ---
+function enableDragScroll(el) {
+  if (!el || el.dataset.dragEnabled) return;
+  el.dataset.dragEnabled = "1";
+
+  let isDown = false;
+  let dragged = false;
+  let startX = 0;
+  let startScroll = 0;
+
+  const DRAG_THRESHOLD = 6; // px antes de considerarlo un arrastre real
+
+  el.addEventListener("mousedown", (e) => {
+    // Ignorar botones que no sean el principal
+    if (e.button !== 0) return;
+    isDown = true;
+    dragged = false;
+    startX = e.pageX;
+    startScroll = el.scrollLeft;
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isDown) return;
+    const delta = e.pageX - startX;
+    if (!dragged && Math.abs(delta) > DRAG_THRESHOLD) {
+      dragged = true;
+      el.classList.add("dragging");
+    }
+    if (dragged) {
+      e.preventDefault();
+      el.scrollLeft = startScroll - delta;
+    }
+  });
+
+  function endDrag() {
+    if (!isDown) return;
+    isDown = false;
+    if (dragged) {
+      el.classList.remove("dragging");
+      // Evita que el "click" que sigue al soltar abra una tarjeta sin querer
+      const blockClick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        el.removeEventListener("click", blockClick, true);
+      };
+      el.addEventListener("click", blockClick, true);
+    }
+    dragged = false;
+  }
+
+  window.addEventListener("mouseup", endDrag);
+  el.addEventListener("mouseleave", () => { if (isDown && !dragged) isDown = false; });
+
+  // Evita el "fantasma" de arrastrar imágenes/nativo del navegador
+  el.addEventListener("dragstart", (e) => e.preventDefault());
+}
+
+function enableDragScrollAll() {
+  document.querySelectorAll(".carousel").forEach(enableDragScroll);
+}
+
+// Vuelve a aplicarse cada vez que cambian de sección o se recargan carruseles,
+// por si aparecen nuevos elementos .carousel en el DOM.
+const dragScrollObserver = new MutationObserver(() => enableDragScrollAll());
+dragScrollObserver.observe(document.body, { childList: true, subtree: true });
+enableDragScrollAll();
 
 loadGenreMaps().then(() => {
   loadGenreChips();

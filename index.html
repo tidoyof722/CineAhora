@@ -4,90 +4,142 @@
 <meta charset="UTF-8" />
 <base href="./">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>CineAhora — Estrenos, series y dónde verlos</title>
+<title>PuntoVista — Descubre y Explora</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script>
 window.tgLoadTimeout = setTimeout(() => {
-  console.warn('Telegram WebApp no cargó, usando modo fallback');
+  console.warn('Telegram WebApp no se cargó, usando fallback');
   window.telegramFallback = true;
 }, 5000);
 </script>
 <script src="https://telegram.org/js/telegram-web-app.js"
         onload="clearTimeout(window.tgLoadTimeout)"
-        onerror="clearTimeout(window.tgLoadTimeout); console.error('Telegram WebApp failed to load'); window.telegramFallback = true;"></script>
+        onerror="clearTimeout(window.tgLoadTimeout); window.telegramFallback = true;"></script>
 </head>
 <body>
 <div class="app">
   <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">▶</span>
-      <span>Cine<span class="brand-accent">Ahora</span></span>
-    </div>
+    <div class="brand">Punto<span class="brand-accent">Vista</span></div>
     <div class="search-wrap">
-      <input id="searchInput" class="search-input" type="search" placeholder="Buscar película o serie..." />
+      <i data-lucide="search" class="search-icon"></i>
+      <input id="searchInput" class="search-input" type="search" placeholder="Películas, series, personas..." />
     </div>
-    <button id="aboutBtn" class="about-btn" type="button" aria-label="Acerca de">ⓘ</button>
+    <button id="aboutBtn" class="about-btn" type="button" aria-label="Acerca de">
+      <i data-lucide="info"></i>
+    </button>
   </header>
 
   <nav class="tabs">
     <button class="tab active" data-section="home">Inicio</button>
-    <button class="tab" data-section="estrenos">Estrenos</button>
+    <button class="tab" data-section="estrenos">En Cines</button>
     <button class="tab" data-section="series">Series</button>
-    <button class="tab" data-section="tendencias">Tendencias</button>
-    <button class="tab" data-section="donde_ver">Dónde Ver</button>
+    <button class="tab" data-section="tendencias">Top 10</button>
+    <button class="tab" data-section="donde_ver">Buscar</button>
   </nav>
 
   <main class="content">
     <section id="section-home" class="panel active">
-      <div class="hero">
-        <p class="hero-eyebrow">Tu guía de cine y series</p>
-        <h1 class="hero-title">Qué ver y dónde verlo</h1>
-        <p class="hero-sub">Estrenos, series y tendencias — con la plataforma exacta donde están disponibles en España.</p>
+      <div id="heroBanner" class="hero">
+        <div class="hero-content">
+          <span class="hero-badge">
+            <i data-lucide="sparkles"></i>
+            Destacado
+          </span>
+          <h1 id="heroTitle" class="hero-title">Cargando...</h1>
+          <div id="heroMeta" class="hero-meta"></div>
+          <div class="hero-actions">
+            <button id="heroWatchBtn" class="btn btn-primary">
+              <i data-lucide="play"></i>
+              Dónde ver
+            </button>
+            <button id="heroInfoBtn" class="btn btn-outline">
+              <i data-lucide="info"></i>
+              Más info
+            </button>
+          </div>
+        </div>
       </div>
-      <p class="aggregator-note">ⓘ CineAhora es un <strong>agregador</strong> independiente de información pública sobre cine y series. No es Netflix, HBO Max, Prime Video ni ninguna plataforma de streaming. Los datos de películas y series provienen de la API de TMDB; la disponibilidad por plataforma usa datos de JustWatch a través de TMDB. Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.</p>
 
-      <div class="section-head"><h2>🎟️ Estrenos</h2></div>
-      <p class="section-sub">En cartelera y streaming ahora mismo en España.</p>
-      <div id="grid-home" class="grid"></div>
+      <div class="section-head">
+        <h2>
+          <i data-lucide="trending-up"></i>
+          Tendencias
+        </h2>
+      </div>
+      <div id="carousel-tendencias-home" class="carousel"></div>
 
-      <div class="section-head"><h2>📺 Series Populares</h2></div>
-      <p class="section-sub">Las series que todo el mundo está viendo.</p>
-      <div id="grid-series-home" class="grid"></div>
+      <div class="section-head">
+        <h2>
+          <i data-lucide="film"></i>
+          Estrenos
+        </h2>
+      </div>
+      <div id="carousel-estrenos-home" class="carousel"></div>
 
-      <div class="section-head"><h2>🔥 Tendencias</h2></div>
-      <p class="section-sub">Lo más visto esta semana.</p>
-      <div id="grid-tendencias-home" class="grid"></div>
+      <div class="section-head">
+        <h2>
+          <i data-lucide="tv"></i>
+          Series Populares
+        </h2>
+      </div>
+      <div id="carousel-series-home" class="carousel"></div>
     </section>
 
     <section id="section-estrenos" class="panel">
-      <div class="section-head"><h2>🎟️ Estrenos</h2></div>
-      <p class="section-sub">En cartelera y streaming ahora mismo en España.</p>
+      <div class="section-head">
+        <h2>
+          <i data-lucide="film"></i>
+          Ahora en Cines
+        </h2>
+      </div>
       <div id="grid-estrenos" class="grid"></div>
-      <button id="loadMoreEstrenos" class="btn btn-outline btn-block load-more-btn" type="button" style="display:none;">Mostrar más</button>
+      <button id="loadMoreEstrenos" class="btn btn-outline" style="width: calc(100% - 32px); margin: 0 16px 28px; display: none;">
+        <i data-lucide="plus"></i>
+        Cargar más
+      </button>
     </section>
 
     <section id="section-series" class="panel">
-      <div class="section-head"><h2>📺 Series Populares</h2></div>
-      <p class="section-sub">Las series más populares del momento.</p>
+      <div class="section-head">
+        <h2>
+          <i data-lucide="tv"></i>
+          Series Populares
+        </h2>
+      </div>
       <div id="grid-series" class="grid"></div>
-      <button id="loadMoreSeries" class="btn btn-outline btn-block load-more-btn" type="button" style="display:none;">Mostrar más</button>
+      <button id="loadMoreSeries" class="btn btn-outline" style="width: calc(100% - 32px); margin: 0 16px 28px; display: none;">
+        <i data-lucide="plus"></i>
+        Cargar más
+      </button>
     </section>
 
     <section id="section-tendencias" class="panel">
-      <div class="section-head"><h2>🔥 Tendencias de la Semana</h2></div>
-      <p class="section-sub">Lo más visto entre películas y series.</p>
+      <div class="section-head">
+        <h2>
+          <i data-lucide="trending-up"></i>
+          Top de la Semana
+        </h2>
+      </div>
       <div id="grid-tendencias" class="grid"></div>
     </section>
 
     <section id="section-donde_ver" class="panel">
-      <div class="section-head"><h2>🔎 Dónde Ver</h2></div>
-      <p class="section-sub">Escribe un título arriba para descubrir en qué plataforma está disponible en España.</p>
+      <div class="section-head">
+        <h2>
+          <i data-lucide="search"></i>
+          Explorar Catálogo
+        </h2>
+      </div>
       <div id="genreChips" class="genre-chips"></div>
       <div id="grid-donde_ver" class="grid"></div>
-      <button id="loadMoreBuscar" class="btn btn-outline btn-block load-more-btn" type="button" style="display:none;">Mostrar más</button>
+      <button id="loadMoreBuscar" class="btn btn-outline" style="width: calc(100% - 32px); margin: 0 16px 28px; display: none;">
+        <i data-lucide="plus"></i>
+        Cargar más
+      </button>
     </section>
   </main>
 </div>
@@ -98,10 +150,13 @@ window.tgLoadTimeout = setTimeout(() => {
     <div id="sheetCover" class="sheet-cover"></div>
     <div class="sheet-body">
       <h3 id="sheetTitle"></h3>
-      <p id="sheetMeta" class="sheet-meta"></p>
+      <div id="sheetMeta" class="sheet-meta"></div>
       <div id="sheetRatings" class="sheet-ratings"></div>
-      <div id="sheetDesc" class="sheet-desc"></div>
-      <p id="sheetWhereLabel" class="section-sub" style="display:none;margin:0 0 8px;">Disponible en:</p>
+      <p id="sheetDesc" class="sheet-desc"></p>
+      <h4 style="font-size: 15px; margin: 0 0 14px; color: var(--text); font-weight: 700; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="play-circle"></i>
+        Dónde ver:
+      </h4>
       <div id="sheetStores" class="sheet-stores"></div>
     </div>
   </div>
@@ -111,19 +166,20 @@ window.tgLoadTimeout = setTimeout(() => {
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-body">
-      <h3>Acerca de CineAhora</h3>
+      <h3 style="display: flex; align-items: center; gap: 10px;">
+        <i data-lucide="info"></i>
+        Acerca de PuntoVista
+      </h3>
       <p class="sheet-desc">
-        CineAhora es una aplicación <strong>agregadora</strong> independiente que reúne en un
-        solo lugar información pública sobre estrenos, series y tendencias de cine.
-        No es una plataforma de streaming y no está afiliada a Netflix, HBO Max, Prime Video,
-        Disney+, Movistar Plus+ ni ninguna otra plataforma.
+        PuntoVista es tu agregador independiente de películas y series. 
+        Descubre qué ver, dónde verlo y mantente al día con las últimas tendencias del mundo del cine.
       </p>
       <p class="sheet-desc">
-        Los datos de películas y series se obtienen de la API pública de TMDB (The Movie
-        Database). La disponibilidad por plataforma de streaming en España usa datos de
-        JustWatch a través de TMDB. Este producto usa la API de TMDB pero no está respaldado
-        ni certificado por TMDB. Para reproducir un título, la operación siempre se completa
-        en la plataforma de streaming correspondiente.
+        Los datos sobre películas, calificaciones y pósters son proporcionados por la API de TMDB (The Movie Database). 
+        La información sobre disponibilidad en plataformas de streaming en tu región se obtiene a través de JustWatch.
+      </p>
+      <p class="sheet-desc" style="margin-top: 20px; font-size: 13px; color: var(--text-dim);">
+        Versión 2.0 • Desarrollado con ❤️
       </p>
     </div>
   </div>
@@ -131,19 +187,24 @@ window.tgLoadTimeout = setTimeout(() => {
 
 <nav class="bottom-nav">
   <button class="bnav-item active" data-section="home">
-    <span class="bnav-icon">🏠</span><span>Inicio</span>
+    <span class="bnav-icon"><i data-lucide="home"></i></span>
+    <span>Inicio</span>
   </button>
   <button class="bnav-item" data-section="estrenos">
-    <span class="bnav-icon">🎟️</span><span>Estrenos</span>
+    <span class="bnav-icon"><i data-lucide="film"></i></span>
+    <span>Cines</span>
   </button>
   <button class="bnav-item" data-section="series">
-    <span class="bnav-icon">📺</span><span>Series</span>
+    <span class="bnav-icon"><i data-lucide="tv"></i></span>
+    <span>Series</span>
   </button>
   <button class="bnav-item" data-section="tendencias">
-    <span class="bnav-icon">🔥</span><span>Tendencias</span>
+    <span class="bnav-icon"><i data-lucide="trending-up"></i></span>
+    <span>Top</span>
   </button>
   <button class="bnav-item" data-section="donde_ver">
-    <span class="bnav-icon">🔎</span><span>Buscar</span>
+    <span class="bnav-icon"><i data-lucide="search"></i></span>
+    <span>Buscar</span>
   </button>
 </nav>
 
