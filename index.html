@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<base href="./">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Portal Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<script>
+window.tgLoadTimeout = setTimeout(() => {
+  console.warn('Telegram WebApp не загрузился, используем fallback режим');
+  window.telegramFallback = true;
+}, 5000);
+</script>
+<script src="https://telegram.org/js/telegram-web-app.js"
+        onload="clearTimeout(window.tgLoadTimeout)"
+        onerror="clearTimeout(window.tgLoadTimeout); console.error('Telegram WebApp failed to load'); window.telegramFallback = true;"></script>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span>Portal<span class="brand-accent">Games</span></span>
+    </div>
+    <div class="search-wrap">
+      <input id="searchInput" class="search-input" type="search" placeholder="Oyun ara..." />
+    </div>
+    <button id="aboutBtn" class="about-btn" type="button" aria-label="Hakkında">ⓘ</button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-section="home">Ana Sayfa</button>
+    <button class="tab" data-section="new_releases">Yeni Çıkanlar</button>
+    <button class="tab" data-section="free_games">Ücretsiz</button>
+    <button class="tab" data-section="hot_deals">İndirimler</button>
+    <button class="tab" data-section="news">Haberler</button>
+    <button class="tab" data-section="discover_and_explore">Keşfet</button>
+  </nav>
+
+  <main class="content">
+    <section id="section-home" class="panel active">
+      <div class="hero">
+        <p class="hero-eyebrow">Oyun merkeziniz hazır</p>
+        <h1 class="hero-title">Tüm oyunlar tek tıkla</h1>
+        <p class="hero-sub">Yeni çıkanlar, ücretsiz oyunlar ve en iyi indirimler — hepsi Telegram içinde.</p>
+      </div>
+      <p class="aggregator-note">ⓘ Portal Games bağımsız bir oyun ve indirim <strong>toplayıcısıdır</strong> (aggregator). Resmi Steam, Epic Games veya GOG mağazası değildir. Fiyat, indirim ve haber bilgileri üçüncü taraf herkese açık API'lerden derlenir; satın alma işlemi ilgili resmi mağazada gerçekleşir.</p>
+
+      <div class="section-head"><h2>📰 Yeni Çıkanlar</h2></div>
+      <p class="section-sub">En son çıkan oyunlar ve beklenen yapımlar.</p>
+      <div id="grid-home" class="grid"></div>
+
+      <div class="section-head"><h2>🎁 Ücretsiz Oyunlar</h2></div>
+      <p class="section-sub">Ücretsiz alınabilecek oyunlar ve sınırlı süreli teklifler.</p>
+      <div id="grid-free_games-home" class="grid"></div>
+
+      <div class="section-head"><h2>🔥 Sıcak Fırsatlar</h2></div>
+      <p class="section-sub">Popüler oyunlarda en iyi indirimler.</p>
+      <div id="grid-hot_deals-home" class="grid"></div>
+
+      <div class="section-head"><h2>📰 Oyun Haberleri</h2></div>
+      <p class="section-sub">Oyun dünyasından son haberler.</p>
+      <div id="news-list-home" class="news-list"></div>
+    </section>
+
+    <section id="section-new_releases" class="panel">
+      <div class="section-head"><h2>📰 Yeni Çıkanlar</h2></div>
+      <p class="section-sub">En son çıkan oyunlar ve beklenen yapımlar.</p>
+      <div id="grid-new_releases" class="grid"></div>
+      <button id="loadMoreNewReleases" class="btn btn-outline btn-block load-more-btn" type="button" style="display:none;">Daha fazla göster</button>
+    </section>
+
+    <section id="section-free_games" class="panel">
+      <div class="section-head"><h2>🎁 Ücretsiz Oyunlar</h2></div>
+      <p class="section-sub">Ücretsiz alınabilecek oyunlar, beta anahtarları ve bedava ödüller.</p>
+      <div id="grid-free_games" class="grid"></div>
+    </section>
+
+    <section id="section-hot_deals" class="panel">
+      <div class="section-head"><h2>🔥 Sıcak Fırsatlar</h2></div>
+      <p class="section-sub">Oyunlardaki en iyi indirimler — kaçırma!</p>
+      <div id="grid-hot_deals" class="grid"></div>
+      <button id="loadMoreHotDeals" class="btn btn-outline btn-block load-more-btn" type="button" style="display:none;">Daha fazla göster</button>
+    </section>
+
+    <section id="section-news" class="panel">
+      <div class="section-head"><h2>📰 Oyun Haberleri</h2></div>
+      <p class="section-sub">Video oyunları dünyasından en son haberler.</p>
+      <div id="news-list" class="news-list"></div>
+    </section>
+
+    <section id="section-discover_and_explore" class="panel">
+      <div class="section-head"><h2>🧩 Oyun Kataloğu</h2></div>
+      <p class="section-sub">Tür, platform veya isme göre ara.</p>
+      <div id="genreChips" class="genre-chips"></div>
+      <div id="grid-discover_and_explore" class="grid"></div>
+      <button id="loadMoreDiscover" class="btn btn-outline btn-block load-more-btn" type="button" style="display:none;">Daha fazla göster</button>
+    </section>
+  </main>
+</div>
+
+<div id="sheetBackdrop" class="sheet-backdrop">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="sheetCover" class="sheet-cover"></div>
+    <div class="sheet-body">
+      <h3 id="sheetTitle"></h3>
+      <p id="sheetMeta" class="sheet-meta"></p>
+      <div id="sheetRatings" class="sheet-ratings"></div>
+      <div id="sheetDesc" class="sheet-desc"></div>
+      <div id="sheetStores" class="sheet-stores"></div>
+    </div>
+  </div>
+</div>
+
+<div id="aboutBackdrop" class="sheet-backdrop">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-body">
+      <h3>Portal Games hakkında</h3>
+      <p class="sheet-desc">
+        Portal Games, oyun dünyasındaki fırsatları tek bir yerde toplayan bağımsız bir
+        <strong>toplayıcı (aggregator)</strong> uygulamasıdır. Resmi bir mağaza değildir ve
+        Steam, Epic Games Store, GOG veya diğer platformlarla bağlantılı değildir.
+      </p>
+      <p class="sheet-desc">
+        Oyun, indirim ve ücretsiz teklif bilgileri RAWG, CheapShark ve GamerPower gibi
+        herkese açık API'lerden; haberler ise ilgili haber kaynaklarının RSS beslemelerinden alınır.
+        Bir oyunu satın almak veya bir teklifi almak istediğinizde, işlem her zaman ilgili
+        resmi mağazada tamamlanır.
+      </p>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="bnav-item active" data-section="home">
+    <span class="bnav-icon">🏠</span><span>Ana Sayfa</span>
+  </button>
+  <button class="bnav-item" data-section="free_games">
+    <span class="bnav-icon">🎁</span><span>Ücretsiz</span>
+  </button>
+  <button class="bnav-item" data-section="hot_deals">
+    <span class="bnav-icon">🔥</span><span>İndirimler</span>
+  </button>
+  <button class="bnav-item" data-section="news">
+    <span class="bnav-icon">📰</span><span>Haberler</span>
+  </button>
+  <button class="bnav-item" data-section="discover_and_explore">
+    <span class="bnav-icon">🧩</span><span>Keşfet</span>
+  </button>
+</nav>
+
+<script src="script.js"></script>
+</body>
+</html>
