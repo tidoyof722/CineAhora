@@ -1,13 +1,13 @@
 :root {
-  --bg: #0a0e16;
-  --surface: #131926;
-  --surface-2: #1a2233;
-  --border: #232c40;
-  --text: #eef1f8;
-  --text-muted: #8b93a8;
-  --accent: #3ddc97;
-  --accent-2: #ff4d8d;
-  --accent-soft: rgba(61, 220, 151, 0.14);
+  --bg: #0d0a16;
+  --surface: #171225;
+  --surface-2: #1f1830;
+  --border: #2f2745;
+  --text: #f3eefb;
+  --text-muted: #a79cc2;
+  --accent: #f2c14e;
+  --accent-2: #b46cff;
+  --accent-soft: rgba(242, 193, 78, 0.14);
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-sm: 8px;
@@ -28,8 +28,8 @@ html, body {
 
 body {
   background:
-    radial-gradient(700px 400px at 100% -10%, rgba(61,220,151,0.10), transparent 60%),
-    radial-gradient(600px 400px at -10% 20%, rgba(255,77,141,0.08), transparent 55%),
+    radial-gradient(700px 400px at 100% -10%, rgba(242,193,78,0.10), transparent 60%),
+    radial-gradient(600px 400px at -10% 20%, rgba(180,108,255,0.10), transparent 55%),
     var(--bg);
   min-height: 100vh;
 }
@@ -137,7 +137,7 @@ button { font-family: inherit; cursor: pointer; }
 .tab.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #06140f;
+  color: #241505;
 }
 
 /* Content / panels */
@@ -157,7 +157,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 28px 20px;
   margin-bottom: 22px;
   background:
-    linear-gradient(135deg, rgba(61,220,151,0.16), rgba(255,77,141,0.10)),
+    linear-gradient(135deg, rgba(242,193,78,0.16), rgba(180,108,255,0.12)),
     var(--surface);
   border: 1px solid var(--border);
   position: relative;
@@ -308,7 +308,7 @@ button { font-family: inherit; cursor: pointer; }
   transition: filter 0.15s ease;
 }
 .btn:active { filter: brightness(0.9); }
-.btn-primary { background: var(--accent); color: #06140f; }
+.btn-primary { background: var(--accent); color: #241505; }
 .btn-outline {
   background: transparent;
   border: 1px solid var(--border);
